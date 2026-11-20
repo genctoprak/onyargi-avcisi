@@ -1,0 +1,247 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model AdminUser {
+  id           String   @id @default(cuid())
+  username     String   @unique
+  passwordHash String
+  displayName  String
+  role         String   @default("RESEARCHER")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model StudyConfig {
+  id                           String   @id @default("default")
+  studyVersion                 String   @default("1.0.0-pilot")
+  studyCollectionEnabled       Boolean  @default(false)
+  ethicsApproved               Boolean  @default(false)
+  parentalConsentProtocolReady Boolean  @default(false)
+  visualsApprovedForResearch   Boolean  @default(false)
+  scenariosFrozen              Boolean  @default(false)
+  frozenScenarioVersion        String?
+  followupEnabled              Boolean  @default(false)
+  followupDelayDays            Int      @default(14)
+  demoDataEnabled              Boolean  @default(true)
+  updatedAt                    DateTime @updatedAt
+}
+
+model CharacterVisualPair {
+  id                  String     @id
+  version             String     @default("1.0.0")
+  systemType          String
+  title               String
+  variableName        String     @default("ust_giyim_tarzi")
+  characterAId        String
+  characterBId        String
+  variantA1Key        String
+  variantA2Key        String
+  variantB1Key        String
+  variantB2Key        String
+  variantA1Label      String
+  variantA2Label      String
+  variantB1Label      String
+  variantB2Label      String
+  isDemoMaterial      Boolean    @default(true)
+  approvedForResearch Boolean    @default(false)
+  approvedBy          String?
+  approvedAt          DateTime?
+  notes               String?
+  createdAt           DateTime   @default(now())
+  updatedAt           DateTime   @updatedAt
+  scenarios           Scenario[]
+}
+
+model Scenario {
+  id                   String              @id
+  version              String              @default("1.0.0")
+  formId               String
+  orderIndex           Int                 @default(0)
+  title                String
+  valueCategory        String
+  scenarioType         String
+  eventText            String
+  characterPairId      String
+  characterPair        CharacterVisualPair @relation(fields: [characterPairId], references: [id])
+  clue1                String?
+  clue2                String?
+  verifiedActor        String
+  behaviorIntent       String              @default("UNKNOWN")
+  contextExplanation   String
+  teachingMessage      String
+  researchQuestion     String
+  expertQuestion       String?
+  expertOptionsJson    String?
+  expertCorrectOption  String?
+  availableChoicesJson String              @default("[\"A\",\"B\",\"UNKNOWN\"]")
+  scoringRuleJson      String              @default("{}")
+  isActive             Boolean             @default(true)
+  approvedForResearch  Boolean             @default(false)
+  expertReviewStatus   String              @default("PILOT")
+  expertReviewNotes    String?
+  createdAt            DateTime            @default(now())
+  updatedAt            DateTime            @updatedAt
+  studyResponses       StudyResponse[]
+  gameResponses        GameResponse[]
+
+  @@index([formId, isActive])
+}
+
+model StudyParticipant {
+  id                     String          @id @default(cuid())
+  anonymousParticipantId String          @unique
+  isDemo                 Boolean         @default(false)
+  studyVersion           String
+  groupAssignment        String
+  pretestForm            String
+  posttestForm           String
+  currentPhase           String          @default("PRETEST")
+  consentAcknowledgedAt  DateTime?
+  parentalPermissionCode String?
+  withdrawnAt            DateTime?
+  deletionRequestedAt    DateTime?
+  deletionNote           String?
+  createdAt              DateTime        @default(now())
+  updatedAt              DateTime        @updatedAt
+  sessions               StudySession[]
+  responses              StudyResponse[]
+
+  @@index([isDemo, groupAssignment])
+}
+
+model StudySession {
+  id                String           @id @default(cuid())
+  participantId     String
+  participant       StudyParticipant @relation(fields: [participantId], references: [id], onDelete: Cascade)
+  isDemo            Boolean          @default(false)
+  studyVersion      String
+  phase             String
+  testForm          String
+  scenarioOrderJson String
+  currentIndex      Int              @default(0)
+  completionStatus  String           @default("IN_PROGRESS")
+  startedAt         DateTime         @default(now())
+  completedAt       DateTime?
+  updatedAt         DateTime         @updatedAt
+  responses         StudyResponse[]
+
+  @@unique([participantId, phase])
+  @@index([isDemo, phase, completionStatus])
+}
+
+model StudyResponse {
+  id                      String           @id @default(cuid())
+  participantId           String
+  participant             StudyParticipant @relation(fields: [participantId], references: [id], onDelete: Cascade)
+  anonymousParticipantId  String
+  sessionId               String
+  session                 StudySession     @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  isDemo                  Boolean          @default(false)
+  studyVersion            String
+  scenarioVersion         String
+  groupAssignment         String
+  testForm                String
+  phase                   String
+  scenarioId              String
+  scenario                Scenario         @relation(fields: [scenarioId], references: [id])
+  visualVariantId         String
+  displayedCharacterOrder String
+  scenarioStartedAt       DateTime
+  firstChoice             String
+  firstConfidence         Int
+  firstReason             String
+  firstReasonOther        String?
+  firstSubmittedAt        DateTime
+  clueViewedAt            DateTime?
+  clue2ViewedAt           DateTime?
+  secondDecisionMode      String?
+  secondChoice            String?
+  secondConfidence        Int?
+  secondSubmittedAt       DateTime?
+  interpretationBefore    Int?
+  interpretationAfter     Int?
+  completionStatus        String           @default("FIRST_SUBMITTED")
+
+  @@unique([sessionId, scenarioId])
+  @@index([isDemo, phase, testForm])
+  @@index([scenarioId, isDemo])
+}
+
+model GameSession {
+  id                         String         @id @default(cuid())
+  playerToken                String
+  mode                       String
+  scenarioIdsJson            String
+  currentIndex               Int            @default(0)
+  totalScore                 Int            @default(0)
+  evidenceScoreCount         Int            @default(0)
+  uncertaintyRecognizedCount Int            @default(0)
+  timedOutCount              Int            @default(0)
+  badgesEarnedJson           String         @default("[]")
+  status                     String         @default("IN_PROGRESS")
+  startedAt                  DateTime       @default(now())
+  completedAt                DateTime?
+  updatedAt                  DateTime       @updatedAt
+  responses                  GameResponse[]
+
+  @@index([playerToken, status])
+}
+
+model GameResponse {
+  id                      String      @id @default(cuid())
+  gameSessionId           String
+  gameSession             GameSession @relation(fields: [gameSessionId], references: [id], onDelete: Cascade)
+  scenarioId              String
+  scenario                Scenario    @relation(fields: [scenarioId], references: [id])
+  scenarioVersion         String
+  visualVariantId         String
+  displayedCharacterOrder String
+  firstChoice             String
+  firstConfidence         Int
+  firstReason             String
+  firstReasonOther        String?
+  timedOut                Boolean     @default(false)
+  firstSubmittedAt        DateTime
+  clue1ViewedAt           DateTime?
+  clue2ViewedAt           DateTime?
+  secondDecisionMode      String?
+  secondChoice            String?
+  secondConfidence        Int?
+  secondSubmittedAt       DateTime?
+  interpretationBefore    Int?
+  interpretationAfter     Int?
+  expertAnswer            String?
+  pointsAwarded           Int         @default(0)
+  scoringBreakdownJson    String      @default("{}")
+  completed               Boolean     @default(false)
+
+  @@unique([gameSessionId, scenarioId])
+}
+
+model ExpertReviewNote {
+  id           String   @id @default(cuid())
+  authorName   String
+  authorRole   String
+  targetType   String   @default("GENERAL")
+  targetId     String?
+  studyVersion String   @default("1.0.0-pilot")
+  rating       Int?
+  note         String
+  status       String   @default("OPEN")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model AuditLog {
+  id            String   @id @default(cuid())
+  adminUsername String
+  action        String
+  details       String
+  createdAt     DateTime @default(now())
+}
