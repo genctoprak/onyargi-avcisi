@@ -1,6 +1,8 @@
 import { prisma } from "@/lib/prisma";
+import { ensureInitialDataSeeded } from "@/lib/bootstrap";
 
 export async function getStudyConfig() {
+  await ensureInitialDataSeeded();
   let config = await prisma.studyConfig.findUnique({ where: { id: "default" } });
   if (!config) {
     config = await prisma.studyConfig.create({

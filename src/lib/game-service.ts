@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { ensureInitialDataSeeded } from "@/lib/bootstrap";
 import {
   buildScenarioAssignments,
   resolveClueText,
@@ -149,11 +150,17 @@ export async function createGameSessionForPlayer(
   playerToken: string,
   mode: "CLASSIC" | "TIMED" | "EXPERT",
 ) {
+  await ensureInitialDataSeeded();
+
   const gameScenarios = await prisma.scenario.findMany({
     where: { formId: "GAME", isActive: true },
     include: { characterPair: true },
     orderBy: { orderIndex: "asc" },
   });
+
+  if (gameScenarios.length === 0) {
+    throw new Error("Veri tabanında aktif oyun senaryosu bulunamadı.");
+  }
 
   const selectedIds = pickScenarioIdsForMode(
     mode,

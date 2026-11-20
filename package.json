@@ -5,7 +5,7 @@
   "description": "Önyargı Avcısı — TÜBİTAK 2204-A kanıta dayalı düşünme eğitici oyunu ve bilimsel ölçme aracı",
   "scripts": {
     "dev": "next dev -p 3010",
-    "build": "next build",
+    "build": "prisma generate && next build",
     "start": "next start -p 3010",
     "lint": "next lint",
     "typecheck": "tsc --noEmit",

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { ensureInitialDataSeeded } from "@/lib/bootstrap";
 import { verifyPassword } from "@/lib/crypto";
 import { guardMutation, setAdminSessionCookie } from "@/lib/security";
 import { adminLoginSchema } from "@/lib/validation";
@@ -9,6 +10,7 @@ export async function POST(req: NextRequest) {
   if (blocked) return blocked;
 
   try {
+    await ensureInitialDataSeeded();
     const body = await req.json();
     const parsed = adminLoginSchema.safeParse(body);
     if (!parsed.success) {
